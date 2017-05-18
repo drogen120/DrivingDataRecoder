@@ -1,0 +1,7 @@
+#Thu May 18 19:31:48 JST 2017
+base.0=/home/gpu_server2/android_workspace/DrivingDataRecoder/app/build/intermediates/transforms/dex/debug/folders/1000/10/instant-run-bootstrap_e1e81ee6c323fe976560b9961d36ba6318b53fcc
+renamed.1=classes2.dex
+renamed.0=classes.dex
+file.1=/home/gpu_server2/android_workspace/DrivingDataRecoder/app/build/intermediates/transforms/dex/debug/folders/1000/10/instant-run_f5e9b185747f9bd889973e8e3fec9e8256e0f1c5/classes.dex
+base.1=/home/gpu_server2/android_workspace/DrivingDataRecoder/app/build/intermediates/transforms/dex/debug/folders/1000/10/instant-run_f5e9b185747f9bd889973e8e3fec9e8256e0f1c5
+file.0=/home/gpu_server2/android_workspace/DrivingDataRecoder/app/build/intermediates/transforms/dex/debug/folders/1000/10/instant-run-bootstrap_e1e81ee6c323fe976560b9961d36ba6318b53fcc/classes.dex
