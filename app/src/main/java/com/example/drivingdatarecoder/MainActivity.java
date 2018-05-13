@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Timer;
@@ -46,6 +47,8 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
+import java.util.ArrayList;
+import java.util.Map;
 
 public class MainActivity extends Activity implements LocationListener, SensorEventListener, OnClickListener, NmeaListener{
 
@@ -108,20 +111,20 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 	private KalmanFilter average_filter_gred_y;
 	private KalmanFilter average_filter_gred_z;
 	private KalmanFilter average_filter_gred;
-//	private MovingAverage average_filter_acc_x;
-//	private MovingAverage average_filter_acc_y;
-//	private MovingAverage average_filter_acc_z;
-//	private MovingAverage average_filter_vgx;
-//	private MovingAverage average_filter_vgy;
-//	private MovingAverage average_filter_vgz;
-//	private MovingAverage average_filter_vv;
-	private KalmanFilter average_filter_acc_x;
-	private KalmanFilter average_filter_acc_y;
-	private KalmanFilter average_filter_acc_z;
-	private KalmanFilter average_filter_vgx;
-	private KalmanFilter average_filter_vgy;
-	private KalmanFilter average_filter_vgz;
-	private KalmanFilter average_filter_vv;
+	private MovingAverage average_filter_acc_x;
+	private MovingAverage average_filter_acc_y;
+	private MovingAverage average_filter_acc_z;
+	private MovingAverage average_filter_vgx;
+	private MovingAverage average_filter_vgy;
+	private MovingAverage average_filter_vgz;
+	private MovingAverage average_filter_vv;
+//	private KalmanFilter average_filter_acc_x;
+//	private KalmanFilter average_filter_acc_y;
+//	private KalmanFilter average_filter_acc_z;
+//	private KalmanFilter average_filter_vgx;
+//	private KalmanFilter average_filter_vgy;
+//	private KalmanFilter average_filter_vgz;
+//	private KalmanFilter average_filter_vv;
 	private float mHighPassx,mLastx;
 	private float mHighPassy,mLasty;
 	private float mHighPassz,mLastz;
@@ -140,9 +143,12 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 	private float gredy;
 	private float gredz;
 	private float sum_speed;
-	private float average_speed;
+	private float acc_filterd;
 	private static float average_gred;
 	float[] magVals;
+	private List<String> record_folder_names = new ArrayList<String>();
+	private Map<String, String> record_folder_map = new HashMap<String, String>();
+
 
 	private   Camera camera;
 
@@ -153,6 +159,7 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 	private String recordfilePath;
 	private String startTime;  //測定開始時刻（文字列）
 	private long startUnixTime; //測定開始時刻（記録時間計測用）
+	private boolean event_detected;
 
 	private long uptime_nano; //スマホの電源が入ってからの時間。センサ類のtimestampの値が保存される変数。
 	private long starttimestamp;
@@ -191,24 +198,24 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 		sView.getHolder().setFixedSize(1920, 1080);
 		sView.getHolder().setKeepScreenOn(true);
 		
-//		average_filter_acc_x = new MovingAverage(5);
-//		average_filter_acc_y = new MovingAverage(5);
-//		average_filter_acc_z = new MovingAverage(5);
-//		average_filter_vgx = new MovingAverage(10);
-//		average_filter_vgy = new MovingAverage(10);
-//		average_filter_vgz = new MovingAverage(10);
-//		average_filter_vv = new MovingAverage(5);
-		average_filter_gred_x = new KalmanFilter();
-		average_filter_gred_y = new KalmanFilter();
-		average_filter_gred_z = new KalmanFilter();
-		average_filter_gred = new KalmanFilter();
-		average_filter_acc_x = new KalmanFilter();
-		average_filter_acc_y = new KalmanFilter();
-		average_filter_acc_z = new KalmanFilter();
-		average_filter_vgx = new KalmanFilter();
-		average_filter_vgy = new KalmanFilter();
-		average_filter_vgz = new KalmanFilter();
-		average_filter_vv = new KalmanFilter();
+		average_filter_acc_x = new MovingAverage(5);
+		average_filter_acc_y = new MovingAverage(5);
+		average_filter_acc_z = new MovingAverage(5);
+		average_filter_vgx = new MovingAverage(10);
+		average_filter_vgy = new MovingAverage(10);
+		average_filter_vgz = new MovingAverage(10);
+		average_filter_vv = new MovingAverage(5);
+//		average_filter_gred_x = new KalmanFilter();
+//		average_filter_gred_y = new KalmanFilter();
+//		average_filter_gred_z = new KalmanFilter();
+//		average_filter_gred = new KalmanFilter();
+//		average_filter_acc_x = new KalmanFilter();
+//		average_filter_acc_y = new KalmanFilter();
+//		average_filter_acc_z = new KalmanFilter();
+//		average_filter_vgx = new KalmanFilter();
+//		average_filter_vgy = new KalmanFilter();
+//		average_filter_vgz = new KalmanFilter();
+//		average_filter_vv = new KalmanFilter();
 		rotationMatrix = new float[16];
 		vgx = 0;
 		vgy = 0;
@@ -217,7 +224,7 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 		gredy = 0;
 		gredz = 0;
 		sum_speed = 0;
-		average_speed = 0;
+		acc_filterd = 0;
 		
         isFixed = false;
 
@@ -253,6 +260,7 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 		mLastgy = 0;
 		mLastgz = 0;
 
+		event_detected = false;
         logStarted = false;
         uptime_nano=0;
         recordStarted = false;
@@ -349,11 +357,12 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 		}
 		return super.onOptionsItemSelected(item);
 	}
-    private void createLocalDirectory(){
+    private String createLocalDirectory(){
         this.recordfilePath = this.SDCardPath + getCurrentYYYYMMDDhhmmss();
         File dir = new File(recordfilePath);
         if(!dir.exists()){ dir.mkdir(); }
         recordfilePath += "/";
+        return recordfilePath;
     }
 
 	@Override
@@ -386,21 +395,28 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 				
 
 				//測定開始時刻を取得
-				startUnixTime = System.currentTimeMillis();
+				startUnixTime = System.currentTimeMillis() / 1000;
 
 				
 				modeClassifier = new ActivityModeClassifier();
 				
 				//記録開始
 				logStarted = true;
+				startSavedata();
 				
 
 
 			//測定終了時
 			}else{
 				logStarted = false;
+
 				if(recordStarted){
 				    stopSavedata();
+				}
+				while(record_folder_names.size() > 0) {
+					File folder_nouse = new File(record_folder_names.get(0));
+					deleteRecursive(folder_nouse);
+					record_folder_names.remove(0);
 				}
 
 		    	//「記録しました」Toast
@@ -585,12 +601,35 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 
 		//記録時（uptime_nanoにもtimestampを格納）
 		}else{
-			if (average_speed > -1 && !recordStarted){
-				startSavedata();
+			Long now_seconds = System.currentTimeMillis()/1000;
+			if (acc_filterd > 3.0) {
+				startUnixTime = now_seconds + 5;
+				event_detected = true;
+//				record_folder_names.remove(0);
 			}
-			if (average_speed <= -1 && recordStarted){
+			if (now_seconds - startUnixTime > 10 && recordStarted){
 				stopSavedata();
+
+				if (event_detected == false && record_folder_names.size() > 1){
+					File folder_nouse = new File(record_folder_names.get(0));
+					deleteRecursive(folder_nouse);
+					record_folder_names.remove(0);
+				}
+				else if (event_detected == true){
+					record_folder_names.clear();
+				}
+
+				startSavedata();
+
+				startUnixTime = System.currentTimeMillis()/1000;
+				event_detected = false;
 			}
+//			if (average_speed > 3 && !recordStarted){
+//				startSavedata();
+//			}
+//			if (average_speed <= 1 && recordStarted){
+//				stopSavedata();
+//			}
 			//加速度
 			if(event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
 				uptime_nano = event.timestamp;
@@ -621,27 +660,28 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 				else{
 					accelVals = new float[]{0 ,0, 0};
 				}
-//				mHighPassx = highPass(accelVals[0], mLastx, mHighPassx);
-//				mHighPassy = highPass(accelVals[1], mLasty, mHighPassy);
-//				mHighPassz = highPass(accelVals[2], mLastz, mHighPassz);
-//				mLastx = accelVals[0];
-//				mLasty = accelVals[1];
-//				mLastz = accelVals[2];
+				mHighPassx = highPass(accelVals[0], mLastx, mHighPassx);
+				mHighPassy = highPass(accelVals[1], mLasty, mHighPassy);
+				mHighPassz = highPass(accelVals[2], mLastz, mHighPassz);
+				mLastx = accelVals[0];
+				mLasty = accelVals[1];
+				mLastz = accelVals[2];
 //				final float dT = 1.0f/(SENSOR_RATE-30);
-//				average_filter_vgx.pushValue(mHighPassx);
-//				average_filter_vgy.pushValue(mHighPassy);
-//				average_filter_vgz.pushValue(mHighPassz);
-//				accelVals[0] = average_filter_vgx.getValue();
-//				accelVals[1] = average_filter_vgy.getValue();
-//				accelVals[2] = average_filter_vgz.getValue();
+				average_filter_vgx.pushValue(mHighPassx);
+				average_filter_vgy.pushValue(mHighPassy);
+				average_filter_vgz.pushValue(mHighPassz);
+				vgx = average_filter_vgx.getValue();
+				vgy = average_filter_vgy.getValue();
+				vgz = average_filter_vgz.getValue();
 //				vgx += accelVals[0]*dT;
 //				vgy += accelVals[1]*dT;
 //				vgz += accelVals[2]*dT;
-//
-//				vv = (float)Math.sqrt(vgx*vgx + vgy*vgy + vgz*vgz);
+
+				vv = (float)Math.sqrt(vgx*vgx + vgy*vgy + vgz*vgz);
 //				average_filter_vv.pushValue(vv);
 //				average_speed = average_filter_vv.getValue();
-//				linearRateText.setText(String.format("%.02f", average_speed)+"m/s");
+				acc_filterd = vv;
+				linearRateText.setText(String.format("%.02f", vv)+"m/s2");
 				if(recordStarted){
 					linearaccWriter.println(
 							//(event.timestamp - starttimestamp) / STEPTIME + COMMA   //UPTIMENANO .. long[nsec]
@@ -837,7 +877,8 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 	}
 	
 	public boolean startSavedata(){
-		createLocalDirectory();
+		String folder_name = createLocalDirectory();
+		record_folder_names.add(folder_name);
 		//現在時刻と選択された運動モードを取得
 		startTime = getCurrentYYYYMMDDhhmm();
 
@@ -948,6 +989,20 @@ public class MainActivity extends Activity implements LocationListener, SensorEv
 			modeWriter.close();
 			MediaScannerConnection.scanFile(this, new String[] { modeFile.getAbsolutePath() }, null, null);
 		}
+//		Log.i("record_folder_names",record_folder_names.get(0));
+//		File folder_nouse = new File(record_folder_names.get(0));
+//		deleteRecursive(folder_nouse);
 		return true;
+	}
+
+	public void deleteRecursive(File fileOrDirectory) {
+
+		if (fileOrDirectory.isDirectory()) {
+			for (File child : fileOrDirectory.listFiles()) {
+				deleteRecursive(child);
+			}
+		}
+
+		fileOrDirectory.delete();
 	}
 }
